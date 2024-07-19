@@ -1,4 +1,5 @@
 use std::env;
+use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
@@ -34,5 +35,14 @@ pub fn ask_continue() -> bool {
         } else {
             return false;
         }
+    }
+}
+
+pub fn enter_continue() {
+    print!("Press enter to continue.");
+    std::io::stdout().flush().unwrap();
+    let mut f = [0u8; 1];
+    match std::io::stdin().read_exact(&mut f) {
+        _ => {}
     }
 }

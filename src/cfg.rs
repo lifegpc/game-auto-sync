@@ -42,6 +42,16 @@ impl Config {
         self.obj.get(&k)
     }
 
+    pub fn get_bool<S: AsRef<str> + ?Sized>(&self, s: &S) -> Option<&bool> {
+        match self.get(s) {
+            Some(y) => match y {
+                Yaml::Boolean(i) => Some(i),
+                _ => None,
+            },
+            None => None,
+        }
+    }
+
     pub fn get_str<S: AsRef<str> + ?Sized>(&self, s: &S) -> Option<&str> {
         match self.get(s) {
             Some(y) => match y {
@@ -97,5 +107,9 @@ impl Config {
 
     pub fn restore_command(&self) -> Option<Vec<String>> {
         self.get_str_vec("restore_command")
+    }
+
+    pub fn pause_at_exit(&self) -> bool {
+        self.get_bool("pause_at_exit").map(|s| s.to_owned()).unwrap_or(false)
     }
 }

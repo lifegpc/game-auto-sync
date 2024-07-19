@@ -52,7 +52,7 @@ impl Main {
         } else {
             let e = Self::call(cml)?;
             let ok = match &e {
-                ExitStatus::Exited(c) => *c != 0,
+                ExitStatus::Exited(c) => *c == 0,
                 _ => false,
             };
             if !ok {
@@ -87,7 +87,7 @@ impl Main {
         } else {
             let e = Self::call(cml)?;
             let ok = match &e {
-                ExitStatus::Exited(c) => *c != 0,
+                ExitStatus::Exited(c) => *c == 0,
                 _ => false,
             };
             if !ok {
@@ -115,7 +115,7 @@ impl Main {
         } else {
             let e = Self::call(cml)?;
             let ok = match &e {
-                ExitStatus::Exited(c) => *c != 0,
+                ExitStatus::Exited(c) => *c == 0,
                 _ => false,
             };
             if !ok {
@@ -130,7 +130,6 @@ impl Main {
 }
 
 fn main() -> ExitCode {
-    println!("Hello, world!");
     let argv: Vec<String> = std::env::args().collect();
     let mut opts = Options::new();
     opts.optflag("h", "help", "Print help message.");
@@ -164,12 +163,15 @@ fn main() -> ExitCode {
         return ExitCode::from(1);
     }
     let m = Main::new(cfg, result.opt_present("d"));
-    match m.run() {
-        Ok(_) => {}
+    let e = match m.run() {
+        Ok(_) => 0,
         Err(e) => {
             println!("{}", e);
-            return ExitCode::from(1);
+            1
         }
+    };
+    if m._cfg.pause_at_exit() {
+        utils::enter_continue();
     }
-    return ExitCode::from(0);
+    return ExitCode::from(e);
 }
