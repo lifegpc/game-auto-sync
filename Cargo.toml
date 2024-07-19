@@ -1,0 +1,10 @@
+[package]
+name = "game-auto-sync"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+derive_more = "0.99.18"
+getopts = "0.2.21"
+subprocess = "0.2.9"
+yaml-rust = "0.4.5"
