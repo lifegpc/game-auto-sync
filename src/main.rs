@@ -23,13 +23,19 @@ enum Error {
 struct Main {
     _cfg: cfg::Config,
     _dryrun: bool,
+    _rclone_enable: bool,
+    _skip_restore: bool,
+    _backup_only: bool,
 }
 
 impl Main {
-    fn new(cfg: cfg::Config, dryrun: bool) -> Self {
+    fn new(cfg: cfg::Config, dryrun: bool, skip_restore: bool, backup_only: bool) -> Self {
         Self {
+            _rclone_enable: cfg.rclone_remote().is_some() && cfg.rclone_local().is_some(),
             _cfg: cfg,
             _dryrun: dryrun,
+            _skip_restore: skip_restore,
+            _backup_only: backup_only,
         }
     }
 
@@ -57,6 +63,40 @@ impl Main {
             };
             if !ok {
                 println!("Backup failed: {:?}.", e);
+                if self._rclone_enable {
+                    if !utils::ask_continue() {
+                        return Err(Error::Exited);
+                    }
+                    return Ok(());
+                }
+                return Err(Error::Exited);
+            }
+            Ok(())
+        }
+    }
+
+    fn backup_rclone(&self) -> Result<(), Error> {
+        let mut cml = vec![self._cfg.rclone_exe(), String::from("sync")];
+        cml.push(self._cfg.rclone_local().unwrap().to_owned());
+        cml.push(self._cfg.rclone_remote().unwrap().to_owned());
+        cml.extend_from_slice(&self._cfg.rclone_flag());
+        if self._dryrun {
+            println!("Rclone backup command line: {:?}", cml);
+            Ok(())
+        } else {
+            let e = Self::call(cml)?;
+            let ok = match &e {
+                ExitStatus::Exited(c) => *c == 0,
+                _ => false,
+            };
+            if !ok {
+                println!("Rclone backup failed: {:?}.", e);
+                if self._rclone_enable {
+                    if !utils::ask_continue() {
+                        return Err(Error::Exited);
+                    }
+                    return Ok(());
+                }
                 return Err(Error::Exited);
             }
             Ok(())
@@ -100,10 +140,44 @@ impl Main {
         }
     }
 
+    fn restore_rclone(&self) -> Result<(), Error> {
+        let mut cml = vec![self._cfg.rclone_exe(), String::from("sync")];
+        cml.push(self._cfg.rclone_remote().unwrap().to_owned());
+        cml.push(self._cfg.rclone_local().unwrap().to_owned());
+        cml.extend_from_slice(&self._cfg.rclone_flag());
+        if self._dryrun {
+            println!("Rclone restore command line: {:?}", cml);
+            Ok(())
+        } else {
+            let e = Self::call(cml)?;
+            let ok = match &e {
+                ExitStatus::Exited(c) => *c == 0,
+                _ => false,
+            };
+            if !ok {
+                println!("Rclone restore failed: {:?}.", e);
+                if !utils::ask_continue() {
+                    return Err(Error::Exited);
+                }
+            }
+            Ok(())
+        }
+    }
+
     fn run(&self) -> Result<(), Error> {
-        self.restore()?;
-        self.run_exe()?;
+        if !self._skip_restore && !self._backup_only {
+            if self._rclone_enable {
+                self.restore_rclone()?;
+            }
+            self.restore()?;
+        }
+        if !self._backup_only {
+            self.run_exe()?;
+        }
         self.backup()?;
+        if self._rclone_enable {
+            self.backup_rclone()?;
+        }
         Ok(())
     }
 
@@ -135,6 +209,8 @@ fn main() -> ExitCode {
     opts.optflag("h", "help", "Print help message.");
     opts.optopt("c", "config", "The location of config file.", "FILE");
     opts.optflag("d", "dryrun", "Run without calling any process.");
+    opts.optflag("r", "skip-restore", "Skip restore backup.");
+    opts.optflag("b", "backup-only", "Backup only.");
     let result = match opts.parse(&argv[1..]) {
         Ok(m) => m,
         Err(err) => {
@@ -162,7 +238,12 @@ fn main() -> ExitCode {
         println!("game_exe need be set.");
         return ExitCode::from(1);
     }
-    let m = Main::new(cfg, result.opt_present("d"));
+    let m = Main::new(
+        cfg,
+        result.opt_present("d"),
+        result.opt_present("r"),
+        result.opt_present("b"),
+    );
     let e = match m.run() {
         Ok(_) => 0,
         Err(e) => {
