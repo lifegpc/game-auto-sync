@@ -170,7 +170,7 @@ fn main() -> ExitCode {
             1
         }
     };
-    if m._cfg.pause_at_exit() {
+    if m._cfg.pause_at_exit() || (e == 1 && m._cfg.pause_on_backup_error()) {
         utils::enter_continue();
     }
     return ExitCode::from(e);

@@ -112,4 +112,8 @@ impl Config {
     pub fn pause_at_exit(&self) -> bool {
         self.get_bool("pause_at_exit").map(|s| s.to_owned()).unwrap_or(false)
     }
+
+    pub fn pause_on_backup_error(&self) -> bool {
+        self.get_bool("pause_on_backup_error").map(|s| s.to_owned()).unwrap_or(false)
+    }
 }
