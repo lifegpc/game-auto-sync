@@ -38,8 +38,7 @@ impl Main {
             Some(cml) => cml,
             None => {
                 let mut def = vec![self._cfg.game_backuper_exe()];
-                let cfg_path = self._cfg.game_backuper_cfg();
-                if std::fs::exists(&cfg_path).unwrap_or(false) {
+                if let Some(cfg_path) = self._cfg.game_backuper_cfg() {
                     def.push(String::from("-c"));
                     def.push(cfg_path);
                 }
@@ -74,8 +73,7 @@ impl Main {
             Some(cml) => cml,
             None => {
                 let mut def = vec![self._cfg.game_backuper_exe()];
-                let cfg_path = self._cfg.game_backuper_cfg();
-                if std::fs::exists(&cfg_path).unwrap_or(false) {
+                if let Some(cfg_path) = self._cfg.game_backuper_cfg() {
                     def.push(String::from("-c"));
                     def.push(cfg_path);
                 }

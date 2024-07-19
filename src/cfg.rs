@@ -71,19 +71,13 @@ impl Config {
         }
     }
 
-    pub fn game_backuper_cfg(&self) -> String {
-        match self.get_str("game_backuper_cfg") {
-            Some(s) => {
-                let mut pb = crate::utils::get_exe_path_else_current();
-                pb.push(s);
-                pb.to_string_lossy().to_string()
-            },
-            None => {
-                let mut pb = crate::utils::get_exe_path_else_current();
-                pb.push("game_backuper.yml");
-                pb.to_string_lossy().to_string()
-            },
+    pub fn game_backuper_cfg(&self) -> Option<String> {
+        let mut pb = crate::utils::get_exe_path_else_current();
+        pb.push(self.get_str("game_backuper_cfg").unwrap_or("game_backuper.yml"));
+        if !pb.exists() {
+            return None;
         }
+        Some(pb.to_string_lossy().to_string())
     }
 
     pub fn game_backuper_exe(&self) -> String {
