@@ -143,4 +143,11 @@ impl Config {
     pub fn rclone_flag(&self) -> Vec<String> {
         self.get_str_vec("rclone_flag").unwrap_or(vec![])
     }
+
+    #[cfg(windows)]
+    pub fn hide_window_when_running_exe(&self) -> bool {
+        self.get_bool("hide_window_when_running_exe")
+            .map(|s| s.to_owned())
+            .unwrap_or(true)
+    }
 }

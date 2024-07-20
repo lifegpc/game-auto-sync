@@ -8,3 +8,6 @@ derive_more = "0.99.18"
 getopts = "0.2.21"
 subprocess = "0.2.9"
 yaml-rust = "0.4.5"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["wincon", "winuser"] }

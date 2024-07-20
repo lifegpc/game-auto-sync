@@ -1,5 +1,7 @@
 mod cfg;
 mod utils;
+#[cfg(windows)]
+mod windows;
 
 use getopts::Options;
 use std::process::ExitCode;
@@ -187,7 +189,23 @@ impl Main {
             println!("Run command line: {:?}", cml);
             Ok(())
         } else {
+            #[cfg(windows)]
+            let need_hide = self._cfg.hide_window_when_running_exe();
+            #[cfg(windows)]
+            let hide = if need_hide {
+                windows::hide_window()
+            } else {
+                false
+            };
+            #[cfg(windows)]
+            if need_hide && !hide {
+                println!("Failed to hide console window.");
+            }
             let e = Self::call(cml)?;
+            #[cfg(windows)]
+            if hide {
+                windows::show_window();
+            }
             let ok = match &e {
                 ExitStatus::Exited(c) => *c == 0,
                 _ => false,

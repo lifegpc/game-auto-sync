@@ -28,6 +28,7 @@ dependencies = [
  "derive_more",
  "getopts",
  "subprocess",
+ "winapi",
  "yaml-rust",
 ]
 
