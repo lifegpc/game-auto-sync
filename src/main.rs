@@ -18,7 +18,10 @@ pub fn print_usage(prog: &str, opts: &Options) {
 
 #[derive(Debug, derive_more::Display, derive_more::From)]
 enum Error {
+    #[cfg(not(windows))]
     Popen(subprocess::PopenError),
+    #[cfg(windows)]
+    Popen(windows::PopenError),
     Exited,
 }
 
@@ -105,9 +108,15 @@ impl Main {
         }
     }
 
+    #[cfg(not(windows))]
     fn call(cml: Vec<String>) -> Result<ExitStatus, subprocess::PopenError> {
         let mut p = subprocess::Popen::create(&cml, subprocess::PopenConfig::default())?;
         p.wait()
+    }
+
+    #[cfg(windows)]
+    fn call(cml: Vec<String>) -> Result<ExitStatus, windows::PopenError> {
+        windows::call(&cml).map(|c| ExitStatus::Exited(c))
     }
 
     fn restore(&self) -> Result<(), Error> {

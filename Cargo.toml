@@ -10,4 +10,4 @@ subprocess = "0.2.9"
 yaml-rust = "0.4.5"
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["wincon", "winuser"] }
+winapi = { version = "0.3", features = ["errhandlingapi", "impl-default", "ioapiset", "jobapi2", "wincon", "winuser"] }
