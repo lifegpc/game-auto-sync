@@ -142,8 +142,9 @@ pub fn call<S: AsRef<OsStr>>(argv: &[S]) -> Result<u32, PopenError> {
             INFINITE,
         )
     } != 0
-        && !(job.wrapping_sub(key).is_null() && code == JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO)
-    {}
+        && !(job.wrapping_byte_sub(key).is_null() && code == JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO)
+    {
+    }
     let mut c = DWORD::default();
     unsafe { GetExitCodeProcess(pi.hProcess, addr_of_mut!(c)) };
     unsafe { CloseHandle(job) };
