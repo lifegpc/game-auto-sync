@@ -150,4 +150,10 @@ impl Config {
             .map(|s| s.to_owned())
             .unwrap_or(true)
     }
+
+    pub fn continue_when_run_failed(&self) -> bool {
+        self.get_bool("continue_when_run_failed")
+            .map(|s| s.to_owned())
+            .unwrap_or(false)
+    }
 }

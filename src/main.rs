@@ -221,7 +221,7 @@ impl Main {
             };
             if !ok {
                 println!("Run failed: {:?}.", e);
-                if !utils::ask_continue() {
+                if !self._cfg.continue_when_run_failed() && !utils::ask_continue() {
                     return Err(Error::Exited);
                 }
             }
