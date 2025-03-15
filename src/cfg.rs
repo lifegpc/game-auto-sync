@@ -128,7 +128,7 @@ impl Config {
     pub fn rclone_exe(&self) -> String {
         match self.get_str("rclone_exe") {
             Some(s) => s.to_owned(),
-            None => String::from("game-backuper"),
+            None => String::from("rclone"),
         }
     }
 
@@ -141,7 +141,8 @@ impl Config {
     }
 
     pub fn rclone_flag(&self) -> Vec<String> {
-        self.get_str_vec("rclone_flag").unwrap_or(vec![])
+        self.get_str_vec("rclone_flag")
+            .unwrap_or(vec!["-P".to_owned()])
     }
 
     #[cfg(windows)]
