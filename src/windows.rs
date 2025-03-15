@@ -8,16 +8,20 @@ use winapi::shared::minwindef::DWORD;
 use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
 use winapi::um::ioapiset::{CreateIoCompletionPort, GetQueuedCompletionStatus};
+use winapi::um::libloaderapi::{GetModuleHandleA, GetProcAddress};
 use winapi::um::jobapi2::{AssignProcessToJobObject, SetInformationJobObject};
+use winapi::um::memoryapi::{VirtualAllocEx, WriteProcessMemory, VirtualFreeEx};
 use winapi::um::minwinbase::LPOVERLAPPED;
 use winapi::um::processthreadsapi::{
-    CreateProcessW, GetExitCodeProcess, ResumeThread, PROCESS_INFORMATION, STARTUPINFOW,
+    CreateProcessW, GetExitCodeProcess, ResumeThread, TerminateProcess, PROCESS_INFORMATION,
+    STARTUPINFOW, CreateRemoteThread,
 };
+use winapi::um::synchapi::WaitForSingleObject;
 use winapi::um::winbase::{CreateJobObjectA, CREATE_SUSPENDED, INFINITE};
 use winapi::um::wincon::GetConsoleWindow;
 use winapi::um::winnt::{
     JobObjectAssociateCompletionPortInformation, JOBOBJECT_ASSOCIATE_COMPLETION_PORT,
-    JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO,
+    JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO, MEM_COMMIT, PAGE_READWRITE, MEM_RELEASE,
 };
 use winapi::um::winuser::{ShowWindow, SW_HIDE, SW_SHOW};
 
@@ -43,9 +47,10 @@ pub enum PopenError {
     CreateJobFailed,
     CreateProcessFailed,
     AssignJobFailed,
+    CreateThreadFailed,
 }
 
-pub fn call<S: AsRef<OsStr>>(argv: &[S]) -> Result<u32, PopenError> {
+pub fn call<S: AsRef<OsStr>, T: AsRef<OsStr>>(argv: &[S], dlls: &[T]) -> Result<u32, PopenError> {
     let job = unsafe { CreateJobObjectA(null_mut(), null()) };
     if job.is_null() {
         println!("Failed to create job: {}.", unsafe { GetLastError() });
@@ -128,6 +133,71 @@ pub fn call<S: AsRef<OsStr>>(argv: &[S]) -> Result<u32, PopenError> {
         unsafe { CloseHandle(pi.hThread) };
         unsafe { CloseHandle(io_port) };
         return Err(PopenError::AssignJobFailed);
+    }
+    for i in dlls.iter() {
+        let dll: Vec<_> = i.as_ref().encode_wide().collect();
+        let mem_size = (dll.len() + 1) * size_of::<u16>();
+        let p_dll_path = unsafe {
+            VirtualAllocEx(
+                pi.hProcess,
+                null_mut(),
+                mem_size,
+                MEM_COMMIT,
+                PAGE_READWRITE,
+            )
+        };
+        if p_dll_path.is_null() {
+            println!("Failed to allocate memory in remote process.");
+            unsafe { TerminateProcess(pi.hProcess, 1) };
+            unsafe { CloseHandle(job) };
+            unsafe { CloseHandle(io_port) };
+            unsafe { CloseHandle(pi.hProcess) };
+            unsafe { CloseHandle(pi.hThread) };
+            return Err(PopenError::CreateProcessFailed);
+        }
+        let re = unsafe {
+            WriteProcessMemory(
+                pi.hProcess,
+                p_dll_path,
+                dll.as_ptr() as *const c_void,
+                mem_size,
+                null_mut(),
+            ) != 0
+        };
+        if !re {
+            println!("Failed to write memory in remote process.");
+            unsafe { VirtualFreeEx(pi.hProcess, p_dll_path, 0, MEM_RELEASE) };
+            unsafe { TerminateProcess(pi.hProcess, 1) };
+            unsafe { CloseHandle(job) };
+            unsafe { CloseHandle(io_port) };
+            unsafe { CloseHandle(pi.hProcess) };
+            unsafe { CloseHandle(pi.hThread) };
+            return Err(PopenError::CreateProcessFailed);
+        }
+        let h_thread = unsafe {
+            CreateRemoteThread(
+                pi.hProcess,
+                null_mut(),
+                0,
+                Some(std::mem::transmute(GetProcAddress(GetModuleHandleA("kernel32\0".as_ptr() as *const i8), "LoadLibraryW\0".as_ptr() as *const i8))),
+                p_dll_path,
+                0,
+                null_mut(),
+            )
+        };
+        if h_thread.is_null() {
+            println!("Failed to create remote thread.");
+            unsafe { VirtualFreeEx(pi.hProcess, p_dll_path, 0, MEM_RELEASE) };
+            unsafe { TerminateProcess(pi.hProcess, 1) };
+            unsafe { CloseHandle(job) };
+            unsafe { CloseHandle(io_port) };
+            unsafe { CloseHandle(pi.hProcess) };
+            unsafe { CloseHandle(pi.hThread) };
+            return Err(PopenError::CreateThreadFailed);
+        }
+        unsafe { WaitForSingleObject(h_thread, INFINITE) };
+        unsafe { VirtualFreeEx(pi.hProcess, p_dll_path, 0, MEM_RELEASE) };
+        unsafe { CloseHandle(h_thread) };
     }
     unsafe { ResumeThread(pi.hThread) };
     let mut code = DWORD::default();

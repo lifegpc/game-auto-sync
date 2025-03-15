@@ -157,4 +157,9 @@ impl Config {
             .map(|s| s.to_owned())
             .unwrap_or(false)
     }
+
+    #[cfg(windows)]
+    pub fn hook_dll(&self) -> Vec<String> {
+        self.get_str_vec("hook_dll").unwrap_or(vec![])
+    }
 }
