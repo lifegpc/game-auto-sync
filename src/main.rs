@@ -31,16 +31,18 @@ struct Main {
     _rclone_enable: bool,
     _skip_restore: bool,
     _backup_only: bool,
+    _run_only: bool,
 }
 
 impl Main {
-    fn new(cfg: cfg::Config, dryrun: bool, skip_restore: bool, backup_only: bool) -> Self {
+    fn new(cfg: cfg::Config, dryrun: bool, skip_restore: bool, backup_only: bool, run_only: bool) -> Self {
         Self {
             _rclone_enable: cfg.rclone_remote().is_some() && cfg.rclone_local().is_some(),
             _cfg: cfg,
             _dryrun: dryrun,
             _skip_restore: skip_restore,
             _backup_only: backup_only,
+            _run_only: run_only,
         }
     }
 
@@ -182,18 +184,20 @@ impl Main {
     }
 
     fn run(&self) -> Result<(), Error> {
-        if !self._skip_restore && !self._backup_only {
+        if !self._run_only && !self._skip_restore && !self._backup_only {
             if self._rclone_enable {
                 self.restore_rclone()?;
             }
             self.restore()?;
         }
-        if !self._backup_only {
+        if self._run_only || !self._backup_only {
             self.run_exe()?;
         }
-        self.backup()?;
-        if self._rclone_enable {
-            self.backup_rclone()?;
+        if !self._run_only {
+            self.backup()?;
+            if self._rclone_enable {
+                self.backup_rclone()?;
+            }
         }
         Ok(())
     }
@@ -247,6 +251,7 @@ fn main() -> ExitCode {
     opts.optflag("d", "dryrun", "Run without calling any process.");
     opts.optflag("r", "skip-restore", "Skip restore backup.");
     opts.optflag("b", "backup-only", "Backup only.");
+    opts.optflag("R", "run-only", "Run only. Do not backup or restore.");
     let result = match opts.parse(&argv[1..]) {
         Ok(m) => m,
         Err(err) => {
@@ -279,6 +284,7 @@ fn main() -> ExitCode {
         result.opt_present("d"),
         result.opt_present("r"),
         result.opt_present("b"),
+        result.opt_present("R"),
     );
     let e = match m.run() {
         Ok(_) => 0,
