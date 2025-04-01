@@ -119,12 +119,12 @@ impl Main {
     #[cfg(windows)]
     fn call(cml: Vec<String>) -> Result<ExitStatus, windows::PopenError> {
         let t = Vec::<String>::new();
-        windows::call(&cml, &t).map(|c| ExitStatus::Exited(c))
+        windows::call(&cml, &t, None::<String>).map(|c| ExitStatus::Exited(c))
     }
 
     #[cfg(windows)]
-    fn call2(cml: Vec<String>, dlls: Vec<String>) -> Result<ExitStatus, windows::PopenError> {
-        windows::call(&cml, &dlls).map(|c| ExitStatus::Exited(c))
+    fn call2(cml: Vec<String>, dlls: Vec<String>, cdir: Option<String>) -> Result<ExitStatus, windows::PopenError> {
+        windows::call(&cml, &dlls, cdir).map(|c| ExitStatus::Exited(c))
     }
 
     fn restore(&self) -> Result<(), Error> {
@@ -223,7 +223,7 @@ impl Main {
             #[cfg(not(windows))]
             let e = Self::call(cml)?;
             #[cfg(windows)]
-            let e = Self::call2(cml, self._cfg.hook_dll())?;
+            let e = Self::call2(cml, self._cfg.hook_dll(), self._cfg.current_dir())?;
             #[cfg(windows)]
             if hide {
                 windows::show_window();

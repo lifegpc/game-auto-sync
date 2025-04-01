@@ -50,7 +50,7 @@ pub enum PopenError {
     CreateThreadFailed,
 }
 
-pub fn call<S: AsRef<OsStr>, T: AsRef<OsStr>>(argv: &[S], dlls: &[T]) -> Result<u32, PopenError> {
+pub fn call<S: AsRef<OsStr>, T: AsRef<OsStr>, C: AsRef<OsStr>>(argv: &[S], dlls: &[T], cdir: Option<C>) -> Result<u32, PopenError> {
     let job = unsafe { CreateJobObjectA(null_mut(), null()) };
     if job.is_null() {
         println!("Failed to create job: {}.", unsafe { GetLastError() });
@@ -105,6 +105,20 @@ pub fn call<S: AsRef<OsStr>, T: AsRef<OsStr>>(argv: &[S], dlls: &[T]) -> Result<
     }
     let mut cmlw: Vec<_> = cml.encode_wide().collect();
     cmlw.resize(cmlw.len() + 1000, 0);
+    let mut cdir = match cdir.as_ref() {
+        Some(c) => {
+            let mut c: Vec<_> = c.as_ref().encode_wide().collect();
+            c.push(0);
+            Some(c)
+        },
+        None => None,
+    };
+    let cdir = match cdir.as_mut() {
+        Some(c) => {
+            c.as_mut_ptr()
+        }
+        None => null_mut(),
+    };
     let re = unsafe {
         CreateProcessW(
             null(),
@@ -114,7 +128,7 @@ pub fn call<S: AsRef<OsStr>, T: AsRef<OsStr>>(argv: &[S], dlls: &[T]) -> Result<
             1,
             CREATE_SUSPENDED,
             null_mut(),
-            null_mut(),
+            cdir,
             addr_of_mut!(si),
             addr_of_mut!(pi),
         ) != 0

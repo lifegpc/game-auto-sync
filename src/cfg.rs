@@ -162,4 +162,9 @@ impl Config {
     pub fn hook_dll(&self) -> Vec<String> {
         self.get_str_vec("hook_dll").unwrap_or(vec![])
     }
+
+    #[cfg(windows)]
+    pub fn current_dir(&self) -> Option<String> {
+        self.get_str("current_dir").map(|s| s.to_owned())
+    }
 }
